@@ -1,10 +1,16 @@
 """Curate my wall: browse the Art Institute of Chicago with BehaviorGPT.
 
 uv run streamlit run app/app.py
+
+To try the art-and-fashion pilot, point it at a mixed catalog from
+build_mixed.py; the art grids are then filtered to art and a fashion tab appears:
+
+ART_CATALOG_STATE=mixed_bridged.json uv run streamlit run app/app.py
 """
 
 import html
 import json
+import os
 from pathlib import Path
 
 import httpx
@@ -14,9 +20,15 @@ from behaviorgpt import AddToCart, RemoveFromCart, Search, UnboxAIClient, View
 from behaviorgpt._exceptions import UnboxAIError
 from dotenv import load_dotenv
 
-from art_map import COLOR_BY, figure, load_points, load_works
+from art_map import COLOR_BY, figure, load_fashion, load_points, load_works
 
-STATE = Path(__file__).parent / "data" / "catalog.json"
+DATA = Path(__file__).parent / "data"
+STATE = DATA / os.environ.get("ART_CATALOG_STATE", "catalog.json")
+# Mixed catalogs from build_mixed.py sit next to their state file.
+MIXED_CATALOG = STATE.with_suffix(".parquet")
+MIXED = STATE.name.startswith("mixed_") and MIXED_CATALOG.exists()
+ART_ONLY = {"id": {"$regex": r"\d+"}} if MIXED else None
+FASHION_ONLY = {"id": {"$regex": "hm_.*"}}
 GRID_COLUMNS = 4
 GRID_SIZE = 12
 EVENTS = {
@@ -93,7 +105,9 @@ WALL_CSS = """
 }
 </style>
 """
-TABS = ["For you", "More like the last one", "Map of art"]
+TABS = ["For you", "More like the last one", "Map of art"] + (
+    ["Fashion for you"] if MIXED else []
+)
 SKELETON_CSS = """
 <style>
 @keyframes shimmer {
@@ -131,22 +145,33 @@ def get_client() -> UnboxAIClient:
 
 
 @st.cache_data(show_spinner=False)
-def recommend(history: tuple[tuple[str, str], ...], limit: int) -> list[dict]:
+def recommend(
+    history: tuple[tuple[str, str], ...], limit: int, fashion: bool = False
+) -> list[dict]:
     events = [EVENTS[kind](value) for kind, value in history]
-    response = get_client().complete(history=events, limit=limit)
+    response = get_client().complete(
+        history=events, limit=limit, filters=FASHION_ONLY if fashion else ART_ONLY
+    )
     return [{"id": item.id, **item.data} for item in response.products.items]
 
 
 @st.cache_data(show_spinner=False)
 def similar(product_id: str, limit: int) -> list[dict]:
-    response = get_client().similar_products(product_id, limit=limit)
+    # The client's similar_products doesn't take filters; its resource method does.
+    response = get_client().catalogs.get_similar_products(
+        product_id, limit=limit, catalog_id=CATALOG_ID, filters=ART_ONLY,
+        headers={"x-catalog-id": CATALOG_ID},
+    )  # fmt: skip
     return [{"id": item.id, **item.data} for item in response.products.items]
 
 
 @st.cache_data(show_spinner=False)
 def map_space(catalog_id: str) -> pd.DataFrame:
     points = load_points(get_client(), catalog_id)
-    return points.merge(load_works(), on="id", how="inner")
+    works = load_works()
+    if MIXED:
+        works = pd.concat([works, load_fashion(MIXED_CATALOG)], ignore_index=True)
+    return points.merge(works, on="id", how="inner")
 
 
 state = st.session_state
@@ -340,7 +365,9 @@ st.text_input(
     placeholder="stormy sea, japanese woodblock, portrait of a dog...",
 )
 
-for_you, more_like, space = st.tabs(TABS, key="tab", on_change="rerun")
+tabs = st.tabs(TABS, key="tab", on_change="rerun")
+for_you, more_like, space = tabs[:3]
+fashion_tab = tabs[3] if MIXED else None
 
 if for_you.open:
     with for_you:
@@ -435,4 +462,35 @@ if space.open:
                 tags = [t for t in [work.get("department"), work.get("style")] if t]
                 if tags:
                     st.caption(" / ".join(tags))
-                action_buttons(work, "map")
+                if not work["id"].startswith("hm_"):
+                    action_buttons(work, "map")
+
+if fashion_tab is not None and fashion_tab.open:
+    with fashion_tab:
+        st.caption(
+            "H&M pieces BehaviorGPT picks from your art history alone: the same "
+            "clicks, filtered to fashion. Pilot data, for research use only."
+        )
+        if not state.history:
+            st.subheader("Popular before you've looked at anything")
+        else:
+            st.subheader("What your art taste says you'd wear")
+
+        def outfits() -> list[dict]:
+            return recommend(tuple(state.history), GRID_SIZE, fashion=True)
+
+        slot = st.empty()
+        with slot.container():
+            with st.spinner("Dressing you...", show_time=True):
+                show_skeleton(GRID_SIZE)
+                items = outfits()
+        with slot.container():
+            columns = st.columns(GRID_COLUMNS)
+            for i, item in enumerate(items):
+                with columns[i % GRID_COLUMNS]:
+                    if item.get("image_url"):
+                        st.image(item["image_url"], width="stretch")
+                    st.markdown(f"**{title(item)}**")
+                    st.caption(
+                        ", ".join((item.get("categories") or "").split(", ")[:3])
+                    )

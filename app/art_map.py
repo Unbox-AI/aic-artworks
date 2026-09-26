@@ -105,6 +105,27 @@ def load_works() -> pd.DataFrame:
     return works
 
 
+def load_fashion(catalog: Path) -> pd.DataFrame:
+    """Fashion rows of a mixed catalog, shaped like `load_works`."""
+    rows = pd.read_parquet(
+        catalog, columns=["id", "name", "brand", "image_url", "categories"]
+    )
+    rows = rows[rows["id"].str.startswith("hm_")]
+    product_type = rows["categories"].str.split(", ").str[0]
+    return pd.DataFrame(
+        {
+            "id": rows["id"],
+            "name": rows["name"],
+            "brand": rows["brand"],
+            "image_url": rows["image_url"],
+            "department": "Fashion (H&M)",
+            "style": product_type,
+            "date": "",
+            "year": None,
+        }
+    )
+
+
 def _points_trace(df, name, color, *, size=5, symbol="circle", line=None, legend=True):
     return go.Scattergl(
         x=df["x"],

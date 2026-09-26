@@ -56,10 +56,28 @@ app/
   fetch_images.py   download and shrink images for re-hosting
   upload_images.py  publish images as a public Hugging Face dataset
   embed.py          upload the catalog and wait for it to be ready
+  build_mixed.py    fashion pilot: art + H&M in one catalog
+  probe_mixed.py    fashion pilot: replay art personas, measure the fashion picks
   data/             everything fetched or built (git-ignored)
 ```
 
 To re-host the images yourself, add a Hugging Face write token to `.env` as `HF_TOKEN`, then run `fetch_images.py`, `upload_images.py <user>/<repo>`, and point `ART_IMAGE_BASE_URL` at the URL it prints.
+
+## Fashion pilot
+
+Does your taste in art say anything about what you'd wear? The pilot embeds artworks and H&M products in one catalog, keeps the art grids art-only with a `filters` query on `id`, and adds a "Fashion for you" tab driven by the same art clicks.
+
+```sh
+# articles.csv from Kaggle's H&M Personalized Fashion Recommendations, in data/fashion/
+uv run python app/build_mixed.py 19000 19000 large
+uv run python app/embed.py data/mixed_bridged_large.parquet data/mixed_bridged_large.json
+uv run python app/probe_mixed.py data/mixed_bridged_large.parquet data/mixed_bridged_large.json
+ART_CATALOG_STATE=mixed_bridged_large.json uv run streamlit run app/app.py
+```
+
+`build_mixed.py` writes a `plain` catalog and a `bridged` one that also tags both sides with a shared colour and motif vocabulary. On 19,000 + 19,000 items, different art histories get clearly different fashion (kimonos for Japanese prints, beaded bracelets for ancient Egypt, statement earrings for portraits), but the two domains never mix in the embedding, and colour barely carries over.
+
+The H&M data is licensed by Kaggle for non-commercial research only and may not be redistributed, so the pilot must not ship publicly as is.
 
 ## Data and license
 

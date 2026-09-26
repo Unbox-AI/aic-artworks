@@ -2,6 +2,7 @@
 
 uv run python app/embed.py           # upload and wait
 uv run python app/embed.py --resume  # keep waiting on the saved job
+uv run python app/embed.py data/mixed_plain.parquet data/mixed_plain.json
 """
 
 import json
@@ -14,9 +15,11 @@ from behaviorgpt import ProgressPrinter, UnboxAIClient
 from behaviorgpt._exceptions import UnboxAIError
 from dotenv import load_dotenv
 
-DATA = Path(__file__).parent / "data"
-CATALOG = DATA / "art_catalog.parquet"
-STATE = DATA / "catalog.json"
+APP = Path(__file__).parent
+DATA = APP / "data"
+paths = [APP / a for a in sys.argv[1:] if not a.startswith("--")]
+CATALOG = paths[0] if paths else DATA / "art_catalog.parquet"
+STATE = paths[1] if len(paths) > 1 else DATA / "catalog.json"
 
 load_dotenv()
 client = UnboxAIClient(market="us")
