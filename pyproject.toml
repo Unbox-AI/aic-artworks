@@ -31,4 +31,4 @@ line-length = 88
 select = ["E", "F", "I"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["art_map", "build_catalog"]
+known-first-party = ["art_map", "build_catalog", "download_data"]

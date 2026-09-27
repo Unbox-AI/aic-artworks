@@ -16,8 +16,8 @@ import plotly.graph_objects as go
 from behaviorgpt import UnboxAIClient
 
 DATA = Path(__file__).parent / "data"
-RAW = DATA / "artworks.jsonl"
 CATALOG = DATA / "art_catalog.parquet"
+WORKS = DATA / "works.parquet"
 
 COLOR_BY = ["Department", "Style", "Year"]
 MAX_GROUPS = 12
@@ -88,16 +88,8 @@ def _style_label(style) -> str | None:
 def load_works() -> pd.DataFrame:
     """Catalog rows with the museum fields the map colours and labels by."""
     catalog = pd.read_parquet(CATALOG, columns=["id", "name", "brand", "image_url"])
-    records = [json.loads(line) for line in RAW.open()]
-    raw = pd.DataFrame(
-        {
-            "id": [str(r["id"]) for r in records],
-            "department": [r.get("department_title") for r in records],
-            "style": [r.get("style_title") for r in records],
-            "date": [r.get("date_display") for r in records],
-            "year": [r.get("date_start") for r in records],
-        }
-    )
+    raw = pd.read_parquet(WORKS)
+    raw["year"] = raw["year"].astype("float")
     raw["style"] = raw["style"].map(_style_label)
     works = catalog.merge(raw, on="id", how="left")
     works["brand"] = works["brand"].fillna("Unknown artist")

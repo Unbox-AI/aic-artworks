@@ -27,6 +27,9 @@ Public-domain artwork images from the Art Institute of Chicago
 (https://www.artic.edu/open-access), resized to 512 px wide. Each image is at
 `images/<id % 10>/<id>.jpg`, where `<id>` is the artwork id in
 https://api.artic.edu/api/v1/artworks/<id>.
+
+`app-data/` holds the catalog and map data that the "Curate my wall" app
+(https://github.com/Unbox-AI/aic-artworks) fetches when it starts.
 """
 
 load_dotenv()

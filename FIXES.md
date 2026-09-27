@@ -21,9 +21,9 @@ Found while building this app. Grouped by where the fix belongs. File references
 
 ## This repo, before a public launch
 
-1. **Move the images to an UnboxAI Hugging Face organisation.** They live in the personal dataset `bruel/aic-artworks`. Re-run `upload_images.py <org>/aic-artworks` and update `ART_IMAGE_BASE_URL` in `.env.example`.
+1. **Delete the old personal image dataset.** The images now live in `unboxai/aic-artworks`; `bruel/aic-artworks` is no longer used.
 2. **Publish the catalog as a shared catalog**, like `retail_catalog`, so visitors can use the app, and the [demo](https://behaviorgpt.unboxai.com/), without embedding it first. The app could then default to that catalog id instead of requiring `embed.py`.
-3. **Deploy it**, for example as a Hugging Face Space. Decide the API key strategy first: a demo key with rate and spend limits on UnboxAI's side, or a field where visitors enter their own key.
+3. **Use a limited demo key before going public.** The deployment runs on the admin key while it is private. Give the public app a key with rate and spend limits, re-embed the catalog under it, and update the `ART_CATALOG_ID` secret.
 4. **Seed the cold start.** Until the ranking issue above is fixed, open with a curated set of well-known works so the first screen is not textile fragments.
 5. **Fill the 671 missing images.** Their 843 px renditions timed out on the museum's server; re-run `fetch_images.py` later, then `upload_images.py`, `build_catalog.py` and `embed.py`. Until then those works embed from text only.
 6. **Clean up style labels.** The museum uses both "19th century" and "Nineteenth century", so they show as two colours on the map (`art_map._style_label`).

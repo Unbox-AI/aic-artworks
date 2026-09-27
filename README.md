@@ -42,7 +42,7 @@ uv run streamlit run app/app.py
 
 1. **Fetch the collection.** [`build_catalog.py`](app/build_catalog.py) pages through the museum's search API for public-domain works with an image. The API refuses more than 1,000 results per query, so the script splits the date range until each slice fits, and stays under the anonymous limit of 60 requests a minute.
 2. **Map it to the catalog format.** Each artwork becomes one row in [BehaviorGPT's catalog format](https://github.com/Unbox-AI/behaviorgpt/blob/main/docs/catalog-format.md): title as `name`, artist as `brand`, department, medium and style as `categories`, subject and style tags as `keywords`. The museum's own "boosted" and "viewed" flags stand in for popularity, since there are no sales numbers. The 19,000 best-known works are kept; a catalog holds at most 20,000.
-3. **Host the images.** The museum's Cloudflare blocks requests from datacenters, so BehaviorGPT's servers get a 403 for every image even though a browser can load them. The works are CC0, so [`fetch_images.py`](app/fetch_images.py) downloads them from a normal connection, shrinks them to 512 px, and [`upload_images.py`](app/upload_images.py) publishes them as a [Hugging Face dataset](https://huggingface.co/datasets/bruel/aic-artworks). Only the museum's 843 px renditions are reliably cached; other sizes time out.
+3. **Host the images.** The museum's Cloudflare blocks requests from datacenters, so BehaviorGPT's servers get a 403 for every image even though a browser can load them. The works are CC0, so [`fetch_images.py`](app/fetch_images.py) downloads them from a normal connection, shrinks them to 512 px, and [`upload_images.py`](app/upload_images.py) publishes them as a [Hugging Face dataset](https://huggingface.co/datasets/unboxai/aic-artworks). Only the museum's 843 px renditions are reliably cached; other sizes time out.
 4. **Embed.** [`embed.py`](app/embed.py) uploads the parquet, saves the catalog id straight away, and waits out network hiccups and the one-ingest-at-a-time lock. Test with a few hundred rows first: a job only reports "failed", without a reason.
 5. **Turn clicks into history.** [`app.py`](app/app.py) keeps the session's events and replays them to `complete` on every click, so each action re-ranks the grid. [`art_map.py`](app/art_map.py) takes the point coordinates out of the `umap` page, caches them, and redraws them so the map can be recoloured by department, style or year, searched, and clicked.
 
@@ -56,12 +56,25 @@ app/
   fetch_images.py   download and shrink images for re-hosting
   upload_images.py  publish images as a public Hugging Face dataset
   embed.py          upload the catalog and wait for it to be ready
+  publish_data.py   upload the app's runtime data to the dataset, for deployments
+  download_data.py  fetch that data on a host that starts without it
   build_mixed.py    fashion pilot: art + H&M in one catalog
   probe_mixed.py    fashion pilot: replay art personas, measure the fashion picks
   data/             everything fetched or built (git-ignored)
 ```
 
 To re-host the images yourself, add a Hugging Face write token to `.env` as `HF_TOKEN`, then run `fetch_images.py`, `upload_images.py <user>/<repo>`, and point `ART_IMAGE_BASE_URL` at the URL it prints.
+
+## Deploy
+
+The app runs on [Streamlit Community Cloud](https://share.streamlit.io) straight from this repo: entrypoint `app/app.py`, Python 3.11, dependencies from `uv.lock`. It starts without any data and fetches the catalog, map fields and cached map from `app-data/` in the [unboxai/aic-artworks](https://huggingface.co/datasets/unboxai/aic-artworks) dataset. Paste two secrets into the app's settings:
+
+```toml
+UNBOXAI_API_KEY = "..."
+ART_CATALOG_ID = "cat_..."  # a catalog embedded with that key
+```
+
+After re-embedding, run `uv run python app/publish_data.py unboxai/aic-artworks` (open the map once first so its coordinates are cached) and update `ART_CATALOG_ID`. [`space/`](space/) holds a Dockerfile and deploy script for a Hugging Face Space, which needs a paid Hugging Face plan.
 
 ## Fashion pilot
 

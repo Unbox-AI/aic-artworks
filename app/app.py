@@ -21,6 +21,7 @@ from behaviorgpt._exceptions import UnboxAIError
 from dotenv import load_dotenv
 
 from art_map import COLOR_BY, figure, load_fashion, load_points, load_works
+from download_data import download
 
 DATA = Path(__file__).parent / "data"
 STATE = DATA / os.environ.get("ART_CATALOG_STATE", "catalog.json")
@@ -132,6 +133,9 @@ SKELETON_CARD = (
 st.set_page_config(page_title="Curate my wall", layout="wide")
 st.markdown(SKELETON_CSS + WALL_CSS, unsafe_allow_html=True)
 
+if not STATE.exists() and os.environ.get("ART_CATALOG_ID"):
+    with st.spinner("Fetching the collection...", show_time=True):
+        download(os.environ["ART_CATALOG_ID"])
 if not STATE.exists():
     st.error("No catalog yet. Run `uv run python app/embed.py` first.")
     st.stop()

@@ -2,8 +2,9 @@
 
     uv run python app/build_catalog.py
 
-Writes `data/artworks.jsonl` (raw API records, reused on later runs) and
-`data/art_catalog.parquet` (the 19,000 best-known works, ready for `client.embed`).
+Writes `data/artworks.jsonl` (raw API records, reused on later runs),
+`data/art_catalog.parquet` (the 19,000 best-known works, ready for `client.embed`)
+and `data/works.parquet` (the museum fields the map colours and labels by).
 """
 
 import json
@@ -22,6 +23,7 @@ load_dotenv()
 DATA = Path(__file__).parent / "data"
 RAW = DATA / "artworks.jsonl"
 CATALOG = DATA / "art_catalog.parquet"
+WORKS = DATA / "works.parquet"
 IMAGES = DATA / "images"
 # Artwork ids whose image is at ART_IMAGE_BASE_URL; written by upload_images.py.
 HOSTED_LIST = Path(__file__).parent / "hosted_images.txt"
@@ -195,6 +197,19 @@ def build_catalog(records: list[dict]) -> pd.DataFrame:
     )
 
 
+def build_works(records: list[dict], ids: pd.Series) -> pd.DataFrame:
+    works = pd.DataFrame(
+        {
+            "id": [str(r["id"]) for r in records],
+            "department": [r.get("department_title") for r in records],
+            "style": [r.get("style_title") for r in records],
+            "date": [r.get("date_display") for r in records],
+            "year": pd.array([r.get("date_start") for r in records], dtype="Int64"),
+        }
+    )
+    return works[works["id"].isin(set(ids))]
+
+
 if __name__ == "__main__":
     if RAW.exists():
         records = [json.loads(line) for line in RAW.open()]
@@ -207,4 +222,5 @@ if __name__ == "__main__":
     )
     pq.write_table(table, CATALOG)
     check_catalog_schema(CATALOG)
-    print(f"{len(catalog)} artworks -> {CATALOG}")
+    build_works(records, catalog["id"]).to_parquet(WORKS, index=False)
+    print(f"{len(catalog)} artworks -> {CATALOG} and {WORKS}")
