@@ -72,7 +72,12 @@ The app runs on [Streamlit Community Cloud](https://share.streamlit.io) straight
 ```toml
 UNBOXAI_API_KEY = "..."
 ART_CATALOG_ID = "cat_..."  # a catalog embedded with that key
+APP_PASSWORD = "..."        # optional: visitors must enter it first
+DAILY_CALL_LIMIT = "3000"   # optional: API calls per day across all visitors
+SESSION_CLICK_LIMIT = "150" # optional: clicks per visitor session
 ```
+
+The daily count lives in the app's process, so it resets when the app restarts; the API key's own limits on UnboxAI's side are the hard stop.
 
 After re-embedding, run `uv run python app/publish_data.py unboxai/aic-artworks` (open the map once first so its coordinates are cached) and update `ART_CATALOG_ID`. [`space/`](space/) holds a Dockerfile and deploy script for a Hugging Face Space, which needs a paid Hugging Face plan.
 

@@ -8,9 +8,12 @@ build_mixed.py; the art grids are then filtered to art and a fashion tab appears
 ART_CATALOG_STATE=mixed_bridged.json uv run streamlit run app/app.py
 """
 
+import datetime
+import hmac
 import html
 import json
 import os
+import threading
 from pathlib import Path
 
 import httpx
@@ -30,6 +33,13 @@ MIXED_CATALOG = STATE.with_suffix(".parquet")
 MIXED = STATE.name.startswith("mixed_") and MIXED_CATALOG.exists()
 ART_ONLY = {"id": {"$regex": r"\d+"}} if MIXED else None
 FASHION_ONLY = {"id": {"$regex": "hm_.*"}}
+# Caps on what visitors can spend of the API key.
+DAILY_CALL_LIMIT = int(os.environ.get("DAILY_CALL_LIMIT", "3000"))
+SESSION_CLICK_LIMIT = int(os.environ.get("SESSION_CLICK_LIMIT", "150"))
+OVER_BUDGET = (
+    "The demo has reached its daily limit of recommendations. Please come back "
+    "tomorrow."
+)
 GRID_COLUMNS = 4
 GRID_SIZE = 12
 EVENTS = {
@@ -133,6 +143,25 @@ SKELETON_CARD = (
 st.set_page_config(page_title="Curate my wall", layout="wide")
 st.markdown(SKELETON_CSS + WALL_CSS, unsafe_allow_html=True)
 
+
+def unlocked() -> bool:
+    """With APP_PASSWORD set, nothing reaches the API until the visitor enters it."""
+    password = os.environ.get("APP_PASSWORD")
+    if not password or st.session_state.get("unlocked"):
+        return True
+    st.title("Curate my wall")
+    entered = st.text_input("Password", type="password")
+    if entered and hmac.compare_digest(entered.encode(), password.encode()):
+        st.session_state.unlocked = True
+        st.rerun()
+    if entered:
+        st.error("Wrong password.")
+    return False
+
+
+if not unlocked():
+    st.stop()
+
 if not STATE.exists() and os.environ.get("ART_CATALOG_ID"):
     with st.spinner("Fetching the collection...", show_time=True):
         download(os.environ["ART_CATALOG_ID"])
@@ -148,10 +177,33 @@ def get_client() -> UnboxAIClient:
     return UnboxAIClient(market="us", default_catalog_id=CATALOG_ID)
 
 
+class OverBudget(Exception):
+    pass
+
+
+@st.cache_resource
+def call_budget() -> dict:
+    """Shared by every session in this process, so it resets on restart."""
+    return {"day": None, "calls": 0, "lock": threading.Lock()}
+
+
+def spend() -> None:
+    """Count one API call against the daily limit; cache hits don't get here."""
+    budget = call_budget()
+    with budget["lock"]:
+        today = datetime.date.today()
+        if budget["day"] != today:
+            budget.update(day=today, calls=0)
+        if budget["calls"] >= DAILY_CALL_LIMIT:
+            raise OverBudget
+        budget["calls"] += 1
+
+
 @st.cache_data(show_spinner=False)
 def recommend(
     history: tuple[tuple[str, str], ...], limit: int, fashion: bool = False
 ) -> list[dict]:
+    spend()
     events = [EVENTS[kind](value) for kind, value in history]
     response = get_client().complete(
         history=events, limit=limit, filters=FASHION_ONLY if fashion else ART_ONLY
@@ -161,6 +213,7 @@ def recommend(
 
 @st.cache_data(show_spinner=False)
 def similar(product_id: str, limit: int) -> list[dict]:
+    spend()
     # The client's similar_products doesn't take filters; its resource method does.
     response = get_client().catalogs.get_similar_products(
         product_id, limit=limit, catalog_id=CATALOG_ID, filters=ART_ONLY,
@@ -171,6 +224,7 @@ def similar(product_id: str, limit: int) -> list[dict]:
 
 @st.cache_data(show_spinner=False)
 def map_space(catalog_id: str) -> pd.DataFrame:
+    spend()
     points = load_points(get_client(), catalog_id)
     works = load_works()
     if MIXED:
@@ -183,6 +237,7 @@ state.setdefault("history", [])
 state.setdefault("wall", {})
 state.setdefault("seen", {})
 state.setdefault("map_selected", None)
+state.setdefault("clicks", 0)
 
 
 def remember(works: list[dict]) -> list[dict]:
@@ -195,29 +250,41 @@ def title(work: dict) -> str:
     return work.get("name") or "Untitled"
 
 
+def record(kind: str, value: str) -> bool:
+    """Add an event unless the session has used its clicks; Start over keeps them."""
+    if state.clicks >= SESSION_CLICK_LIMIT:
+        st.toast(
+            "That's the limit for one visit to this demo. Thanks for exploring!",
+            icon=":material/block:",
+        )
+        return False
+    state.clicks += 1
+    state.history.append((kind, value))
+    return True
+
+
 def look_closer(work: dict) -> None:
     remember([work])
-    state.history.append(("view", work["id"]))
-    st.toast(f"Looking closer at *{title(work)}*", icon=":material/visibility:")
+    if record("view", work["id"]):
+        st.toast(f"Looking closer at *{title(work)}*", icon=":material/visibility:")
 
 
 def hang(work: dict) -> None:
     remember([work])
-    state.history.append(("hang", work["id"]))
-    state.wall[work["id"]] = work
-    st.toast(f"Hung *{title(work)}* on your wall", icon=":material/star:")
+    if record("hang", work["id"]):
+        state.wall[work["id"]] = work
+        st.toast(f"Hung *{title(work)}* on your wall", icon=":material/star:")
 
 
 def take_down(work: dict) -> None:
-    state.history.append(("take_down", work["id"]))
-    state.wall.pop(work["id"], None)
-    st.toast(f"Took down *{title(work)}*", icon=":material/do_not_disturb_on:")
+    if record("take_down", work["id"]):
+        state.wall.pop(work["id"], None)
+        st.toast(f"Took down *{title(work)}*", icon=":material/do_not_disturb_on:")
 
 
 def search() -> None:
     query = state.query.strip()
-    if query:
-        state.history.append(("search", query))
+    if query and record("search", query):
         st.toast(f'Searching for "{query}"', icon=":material/search:")
     state.query = ""
 
@@ -271,8 +338,14 @@ def loading_grid(label: str, fetch, key: str) -> list[dict]:
     with slot.container():
         with st.spinner(label, show_time=True):
             show_skeleton(GRID_SIZE)
-            works = fetch()
+            try:
+                works = fetch()
+            except OverBudget:
+                works = None
     with slot.container():
+        if works is None:
+            st.info(OVER_BUDGET, icon=":material/hourglass_empty:")
+            return []
         show_grid(works, key)
     return works
 
@@ -420,6 +493,9 @@ if space.open:
             with st.spinner("Mapping 19,000 works...", show_time=True):
                 works = map_space(CATALOG_ID)
                 picked = {w["id"] for w in picks()}
+        except OverBudget:
+            st.info(OVER_BUDGET, icon=":material/hourglass_empty:")
+            st.stop()
         except (httpx.HTTPError, UnboxAIError) as exc:
             st.warning(f"The map isn't available right now: {exc}")
             st.stop()
@@ -487,8 +563,13 @@ if fashion_tab is not None and fashion_tab.open:
         with slot.container():
             with st.spinner("Dressing you...", show_time=True):
                 show_skeleton(GRID_SIZE)
-                items = outfits()
+                try:
+                    items = outfits()
+                except OverBudget:
+                    items = []
         with slot.container():
+            if not items:
+                st.info(OVER_BUDGET, icon=":material/hourglass_empty:")
             columns = st.columns(GRID_COLUMNS)
             for i, item in enumerate(items):
                 with columns[i % GRID_COLUMNS]:
