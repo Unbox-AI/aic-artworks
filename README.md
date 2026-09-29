@@ -7,9 +7,6 @@ Browse 19,000 public-domain artworks from the [Art Institute of Chicago](https:/
 ![The gallery wall, taste trail and recommendations](docs/screenshots/wall.png)
 
 It is a small, complete example of building on the BehaviorGPT SDK: turning an open dataset into a catalog, embedding it, and driving recommendations, personalized search, similar items and the embedding map from a user's clicks.
-
-> Status: working prototype. See [FIXES.md](FIXES.md) for what needs fixing before a public launch.
-
 ## What it shows
 
 | In the app | BehaviorGPT call |
@@ -46,7 +43,7 @@ uv run streamlit run app/app.py
 1. **Fetch the collection.** [`build_catalog.py`](app/build_catalog.py) pages through the museum's search API for public-domain works with an image. The API refuses more than 1,000 results per query, so the script splits the date range until each slice fits, and stays under the anonymous limit of 60 requests a minute.
 2. **Map it to the catalog format.** Each artwork becomes one row in [BehaviorGPT's catalog format](https://github.com/Unbox-AI/behaviorgpt/blob/main/docs/catalog-format.md): title as `name`, artist as `brand`, department, medium and style as `categories`, subject and style tags as `keywords`. The museum's own "boosted" and "viewed" flags stand in for popularity, since there are no sales numbers. The 19,000 best-known works are kept; a catalog holds at most 20,000.
 3. **Host the images.** The museum's Cloudflare blocks requests from datacenters, so BehaviorGPT's servers get a 403 for every image even though a browser can load them. The works are CC0, so [`fetch_images.py`](app/fetch_images.py) downloads them from a normal connection, shrinks them to 512 px, and [`upload_images.py`](app/upload_images.py) publishes them as a [Hugging Face dataset](https://huggingface.co/datasets/unboxai/aic-artworks). Only the museum's 843 px renditions are reliably cached; other sizes time out.
-4. **Embed.** [`embed.py`](app/embed.py) uploads the parquet, saves the catalog id straight away, and waits out network hiccups and the one-ingest-at-a-time lock. Test with a few hundred rows first: a job only reports "failed", without a reason.
+4. **Embed.** [`embed.py`](app/embed.py) uploads the parquet, saves the catalog id straight away, and waits out network hiccups and the one-ingest-at-a-time lock. Test with a few hundred rows first.
 5. **Turn clicks into history.** [`app.py`](app/app.py) keeps the session's events and replays them to `complete` on every click, so each action re-ranks the grid. [`art_map.py`](app/art_map.py) takes the point coordinates out of the `umap` page, caches them, and redraws them so the map can be recoloured by department, style or year, searched, and clicked.
 
 ## Layout
@@ -103,6 +100,13 @@ ART_CATALOG_STATE=mixed_bridged_large.json uv run streamlit run app/app.py
 `build_mixed.py` writes a `plain` catalog and a `bridged` one that also tags both sides with a shared colour and motif vocabulary. On 19,000 + 19,000 items, different art histories get clearly different fashion (kimonos for Japanese prints, beaded bracelets for ancient Egypt, statement earrings for portraits), but the two domains never mix in the embedding, and colour barely carries over.
 
 The H&M data is licensed by Kaggle for non-commercial research only and may not be redistributed. The live demo shows the pilot for research, and reads the mixed catalog from a private dataset rather than publishing it.
+
+## Known limitations
+
+- 671 works have no image: the museum's server timed out on them, so they embed from text only and show as empty cards.
+- The museum labels styles both "19th century" and "Nineteenth century", so they appear as two colours on the map.
+- With no history yet, the first grid leans towards textile fragments rather than the best-known paintings ([behaviorgpt#13](https://github.com/Unbox-AI/behaviorgpt/issues/13)).
+- The map is read out of the Plotly page `client.umap()` returns, so it can break if that page changes ([behaviorgpt#8](https://github.com/Unbox-AI/behaviorgpt/issues/8)).
 
 ## Data and license
 
