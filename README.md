@@ -17,7 +17,7 @@ It is a small, complete example of building on the BehaviorGPT SDK: turning an o
 | "For you" grid, cold start and after every click | `client.complete(history=[...])` |
 | Search box, ranked by your history | `complete` with a `Search` as the last event |
 | Look closer / Hang it / Take down | `View`, `AddToCart`, `RemoveFromCart` events |
-| "More like the last one" | `client.similar_products(id)` |
+| "More like the last one" | `client.similar_items(id)` |
 | Map of art | `client.umap()`, redrawn with Plotly |
 | "Fashion for you", from art clicks only | `complete` on a mixed art + fashion catalog, with `filters` |
 | Uploading the collection | `client.embed(parquet)` |

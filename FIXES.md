@@ -8,7 +8,7 @@ Found while building this app. Grouped by where the fix belongs. File references
 2. **Export `UnboxAIError` publicly.** `app.py` and `embed.py` import it from the private `behaviorgpt._exceptions`.
 3. **Add a way to list catalogs and their status.** `GET /catalogs` exists in the API but not in the SDK, so `embed.py` calls it through the private `client._http_client`.
 4. **Return map coordinates as data.** `client.umap()` returns a 6 MB Plotly HTML page. `art_map.parse_umap_html` digs the coordinates out of the embedded JavaScript, which breaks as soon as the page changes. A method returning `id, x, y` rows would make the map reusable.
-5. **Make `embed(wait=True)` robust.** One network timeout while polling raised out of `embed`, and the job id was never returned, so the running job could not be followed. Return the job details before waiting, and retry transient errors while polling.
+5. **Return the job before waiting in `embed(wait=True)`.** Polling now retries transient errors, but if the wait still raises, the job id is lost and the running job can't be followed.
 
 ## BehaviorGPT API
 

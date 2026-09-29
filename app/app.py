@@ -237,18 +237,18 @@ def recommend(
     response = get_client().complete(
         history=events, limit=limit, filters=FASHION_ONLY if fashion else ART_ONLY
     )
-    return [{"id": item.id, **item.data} for item in response.products.items]
+    return [{"id": item.id, **item.data} for item in response.items]
 
 
 @st.cache_data(show_spinner=False)
-def similar(product_id: str, limit: int) -> list[dict]:
+def similar(item_id: str, limit: int) -> list[dict]:
     spend()
-    # The client's similar_products doesn't take filters; its resource method does.
-    response = get_client().catalogs.get_similar_products(
-        product_id, limit=limit, catalog_id=CATALOG_ID, filters=ART_ONLY,
+    # The client's similar_items doesn't take filters; its resource method does.
+    response = get_client().catalogs.get_similar_items(
+        item_id, limit=limit, catalog_id=CATALOG_ID, filters=ART_ONLY,
         headers={"x-catalog-id": CATALOG_ID},
     )  # fmt: skip
-    return [{"id": item.id, **item.data} for item in response.products.items]
+    return [{"id": item.id, **item.data} for item in response.items]
 
 
 @st.cache_data(show_spinner=False)

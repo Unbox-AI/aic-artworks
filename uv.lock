@@ -6,10 +6,10 @@ resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'emscripten'",
     "python_full_version >= '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'win32'",
-    "python_full_version < '3.12' and sys_platform == 'win32'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
-    "python_full_version < '3.12' and sys_platform == 'emscripten'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.12' and sys_platform == 'win32'",
+    "python_full_version < '3.12' and sys_platform == 'emscripten'",
     "python_full_version < '3.12' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 
@@ -36,7 +36,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "behaviorgpt", git = "https://github.com/Unbox-AI/behaviorgpt.git?rev=4705b317849e3d6dc290bce8ea05fa846cf1e2a1" },
+    { name = "behaviorgpt", git = "https://github.com/Unbox-AI/behaviorgpt.git?rev=2a061ebaf05abb42f5e2aa77b84dcd33a7873b42" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "huggingface-hub", specifier = ">=2.0.0" },
     { name = "pandas", specifier = ">=3.0.5" },
@@ -100,7 +100,7 @@ wheels = [
 [[package]]
 name = "behaviorgpt"
 version = "0.1.0"
-source = { git = "https://github.com/Unbox-AI/behaviorgpt.git?rev=4705b317849e3d6dc290bce8ea05fa846cf1e2a1#4705b317849e3d6dc290bce8ea05fa846cf1e2a1" }
+source = { git = "https://github.com/Unbox-AI/behaviorgpt.git?rev=2a061ebaf05abb42f5e2aa77b84dcd33a7873b42#2a061ebaf05abb42f5e2aa77b84dcd33a7873b42" }
 dependencies = [
     { name = "httpx" },
     { name = "pyarrow" },

@@ -63,7 +63,7 @@ def history_for(art: pd.DataFrame, pick) -> list:
 
 
 def ids(response) -> list[str]:
-    return [item.id for item in response.products.items]
+    return [item.id for item in response.items]
 
 
 def jaccard(a: list[str], b: list[str]) -> float:
@@ -124,7 +124,7 @@ def main(catalog_path: Path, state_path: Path) -> None:
 
     print("\n## Fashion picks per persona")
     for name, found in picks.items():
-        seeds = [e.product for e in histories[name]][:3]
+        seeds = [e.item for e in histories[name]][:3]
         print(f"\n### {name} (seeded by {', '.join(names[s] for s in seeds)}...)")
         for i in found[:8]:
             print(f"- {names[i]}  [{cats[i][:90]}]")

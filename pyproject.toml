@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     # Not on PyPI yet; pinned to the SDK commit this app was built against.
-    "behaviorgpt @ git+https://github.com/Unbox-AI/behaviorgpt.git@4705b317849e3d6dc290bce8ea05fa846cf1e2a1",
+    "behaviorgpt @ git+https://github.com/Unbox-AI/behaviorgpt.git@2a061ebaf05abb42f5e2aa77b84dcd33a7873b42",
     "httpx>=0.28.1",
     "huggingface-hub>=2.0.0",
     "pandas>=3.0.5",
