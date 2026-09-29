@@ -2,6 +2,8 @@
 
 Browse 19,000 public-domain artworks from the [Art Institute of Chicago](https://www.artic.edu/open-access) with [BehaviorGPT](https://github.com/Unbox-AI/behaviorgpt) as the curator. Every click is an event in your history: look closer at a work, hang it on your wall, take it down, search. BehaviorGPT predicts what you want to see next, and the map shows where your taste sits in the model's view of art.
 
+**[Try it live at aic-artworks.streamlit.app](https://aic-artworks.streamlit.app/)**
+
 ![The gallery wall, taste trail and recommendations](docs/screenshots/wall.png)
 
 It is a small, complete example of building on the BehaviorGPT SDK: turning an open dataset into a catalog, embedding it, and driving recommendations, personalized search, similar items and the embedding map from a user's clicks.
