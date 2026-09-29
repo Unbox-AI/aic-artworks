@@ -1,6 +1,6 @@
 # Curate my wall
 
-Browse 19,000 public-domain artworks from the [Art Institute of Chicago](https://www.artic.edu/open-access) with [BehaviorGPT](https://github.com/Unbox-AI/behaviorgpt) as the curator. Every click is an event in your history: look closer at a work, hang it on your wall, take it down, search. BehaviorGPT predicts what you want to see next, and the map shows where your taste sits in the model's view of art.
+Browse 19,000 public-domain artworks from the [Art Institute of Chicago](https://www.artic.edu/open-access) with [BehaviorGPT](https://github.com/Unbox-AI/behaviorgpt) as the curator. Every click is an event in your history: look closer at a work, hang it on your wall, take it down, search. BehaviorGPT predicts what you want to see next, and the map shows where your taste sits in the model's view of art. A "Fashion for you" tab then turns the same art clicks into clothing recommendations.
 
 **[Try it live at aic-artworks.streamlit.app](https://aic-artworks.streamlit.app/)**
 
@@ -19,6 +19,7 @@ It is a small, complete example of building on the BehaviorGPT SDK: turning an o
 | Look closer / Hang it / Take down | `View`, `AddToCart`, `RemoveFromCart` events |
 | "More like the last one" | `client.similar_products(id)` |
 | Map of art | `client.umap()`, redrawn with Plotly |
+| "Fashion for you", from art clicks only | `complete` on a mixed art + fashion catalog, with `filters` |
 | Uploading the collection | `client.embed(parquet)` |
 
 ![The map coloured by department, with Hokusai highlighted](docs/screenshots/map-department.png)
@@ -89,6 +90,8 @@ To show the [fashion pilot](#fashion-pilot) in the deployed app, publish the mix
 
 Does your taste in art say anything about what you'd wear? The pilot embeds artworks and H&M products in one catalog, keeps the art grids art-only with a `filters` query on `id`, and adds a "Fashion for you" tab driven by the same art clicks.
 
+![Three Hokusai prints on the wall, and the fashion they lead to: printed scarves, kimonos, an "Osaka" dress](docs/screenshots/fashion.png)
+
 ```sh
 # articles.csv from Kaggle's H&M Personalized Fashion Recommendations, in data/fashion/
 uv run python app/build_mixed.py 19000 19000 large
@@ -99,7 +102,7 @@ ART_CATALOG_STATE=mixed_bridged_large.json uv run streamlit run app/app.py
 
 `build_mixed.py` writes a `plain` catalog and a `bridged` one that also tags both sides with a shared colour and motif vocabulary. On 19,000 + 19,000 items, different art histories get clearly different fashion (kimonos for Japanese prints, beaded bracelets for ancient Egypt, statement earrings for portraits), but the two domains never mix in the embedding, and colour barely carries over.
 
-The H&M data is licensed by Kaggle for non-commercial research only and may not be redistributed, so the pilot must not ship publicly as is.
+The H&M data is licensed by Kaggle for non-commercial research only and may not be redistributed. The live demo shows the pilot for research, and reads the mixed catalog from a private dataset rather than publishing it.
 
 ## Data and license
 
