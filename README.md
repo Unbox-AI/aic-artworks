@@ -81,6 +81,8 @@ The daily count lives in the app's process, so it resets when the app restarts; 
 
 After re-embedding, run `uv run python app/publish_data.py unboxai/aic-artworks` (open the map once first so its coordinates are cached) and update `ART_CATALOG_ID`. [`space/`](space/) holds a Dockerfile and deploy script for a Hugging Face Space, which needs a paid Hugging Face plan.
 
+To show the [fashion pilot](#fashion-pilot) in the deployed app, publish the mixed catalog to a private dataset with `uv run python app/publish_data.py bruel/aic-artworks-fashion mixed_bridged_large` and add the secrets `ART_CATALOG_STATE = "mixed_bridged_large.json"`, `ART_CATALOG_ID` set to the mixed catalog's id, and `HF_TOKEN` set to a read-only token for that dataset. The H&M data is licensed for research only, so the dataset must stay private.
+
 ## Fashion pilot
 
 Does your taste in art say anything about what you'd wear? The pilot embeds artworks and H&M products in one catalog, keeps the art grids art-only with a `filters` query on `id`, and adds a "Fashion for you" tab driven by the same art clicks.

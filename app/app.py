@@ -6,6 +6,9 @@ To try the art-and-fashion pilot, point it at a mixed catalog from
 build_mixed.py; the art grids are then filtered to art and a fashion tab appears:
 
 ART_CATALOG_STATE=mixed_bridged.json uv run streamlit run app/app.py
+
+Hosted, set ART_CATALOG_STATE=mixed_bridged_large.json and ART_CATALOG_ID to
+that catalog; download_data.py fetches it from the private fashion dataset.
 """
 
 import datetime
@@ -26,11 +29,32 @@ from dotenv import load_dotenv
 from art_map import COLOR_BY, figure, load_fashion, load_points, load_works
 from download_data import download
 
+
+def secrets_to_environ() -> list[str]:
+    """Streamlit Community Cloud passes settings as secrets; the SDK reads env vars.
+
+    Settings pasted under a [section] header count too. Returns the names found.
+    """
+    try:
+        secrets = st.secrets.to_dict()
+    except (FileNotFoundError, KeyError):
+        return []
+    flat = {}
+    for key, value in secrets.items():
+        flat.update(value if isinstance(value, dict) else {key: value})
+    for key, value in flat.items():
+        if isinstance(value, str | int):
+            os.environ.setdefault(key, str(value))
+    return sorted(flat)
+
+
+# Before anything reads the environment.
+SECRET_NAMES = secrets_to_environ()
 DATA = Path(__file__).parent / "data"
 STATE = DATA / os.environ.get("ART_CATALOG_STATE", "catalog.json")
 # Mixed catalogs from build_mixed.py sit next to their state file.
 MIXED_CATALOG = STATE.with_suffix(".parquet")
-MIXED = STATE.name.startswith("mixed_") and MIXED_CATALOG.exists()
+MIXED = STATE.name.startswith("mixed_")
 ART_ONLY = {"id": {"$regex": r"\d+"}} if MIXED else None
 FASHION_ONLY = {"id": {"$regex": "hm_.*"}}
 # Caps on what visitors can spend of the API key.
@@ -144,27 +168,6 @@ st.set_page_config(page_title="Curate my wall", layout="wide")
 st.markdown(SKELETON_CSS + WALL_CSS, unsafe_allow_html=True)
 
 
-def secrets_to_environ() -> list[str]:
-    """Streamlit Community Cloud passes settings as secrets; the SDK reads env vars.
-
-    Settings pasted under a [section] header count too. Returns the names found.
-    """
-    try:
-        secrets = st.secrets.to_dict()
-    except (FileNotFoundError, KeyError):
-        return []
-    flat = {}
-    for key, value in secrets.items():
-        flat.update(value if isinstance(value, dict) else {key: value})
-    for key, value in flat.items():
-        if isinstance(value, str | int):
-            os.environ.setdefault(key, str(value))
-    return sorted(flat)
-
-
-SECRET_NAMES = secrets_to_environ()
-
-
 def unlocked() -> bool:
     """With APP_PASSWORD set, nothing reaches the API until the visitor enters it."""
     password = os.environ.get("APP_PASSWORD")
@@ -185,7 +188,7 @@ if not unlocked():
 
 if not STATE.exists() and os.environ.get("ART_CATALOG_ID"):
     with st.spinner("Fetching the collection...", show_time=True):
-        download(os.environ["ART_CATALOG_ID"])
+        download(os.environ["ART_CATALOG_ID"], STATE)
 if not STATE.exists():
     st.error(
         "No catalog yet. Run `uv run python app/embed.py` first, or set "
