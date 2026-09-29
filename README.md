@@ -22,7 +22,7 @@ It is a small, complete example of building on the BehaviorGPT SDK: turning an o
 | "Fashion for you", from art clicks only | `complete` on a mixed art + fashion catalog, with `filters` |
 | Uploading the collection | `client.embed(parquet)` |
 
-![The map coloured by department, with Hokusai highlighted](docs/screenshots/map-department.png)
+![The map coloured by department, with Hokusai highlighted and the H&M products as their own region](docs/screenshots/map-department.png)
 
 ## Run it
 
