@@ -144,6 +144,20 @@ st.set_page_config(page_title="Curate my wall", layout="wide")
 st.markdown(SKELETON_CSS + WALL_CSS, unsafe_allow_html=True)
 
 
+def secrets_to_environ() -> None:
+    """Streamlit Community Cloud passes settings as secrets; the SDK reads env vars."""
+    try:
+        secrets = dict(st.secrets)
+    except (FileNotFoundError, KeyError):
+        return
+    for key, value in secrets.items():
+        if isinstance(value, str | int):
+            os.environ.setdefault(key, str(value))
+
+
+secrets_to_environ()
+
+
 def unlocked() -> bool:
     """With APP_PASSWORD set, nothing reaches the API until the visitor enters it."""
     password = os.environ.get("APP_PASSWORD")
@@ -166,7 +180,10 @@ if not STATE.exists() and os.environ.get("ART_CATALOG_ID"):
     with st.spinner("Fetching the collection...", show_time=True):
         download(os.environ["ART_CATALOG_ID"])
 if not STATE.exists():
-    st.error("No catalog yet. Run `uv run python app/embed.py` first.")
+    st.error(
+        "No catalog yet. Run `uv run python app/embed.py` first, or set "
+        "`ART_CATALOG_ID` to fetch an embedded one."
+    )
     st.stop()
 CATALOG_ID = json.loads(STATE.read_text())["catalog_id"]
 
